@@ -3,6 +3,7 @@
 // App.vue：根组件
 // 整体布局：sidebar（左）+ right-area（右：topbar + content）
 // ============================================================
+import { ref } from 'vue'
 import { RouterView } from 'vue-router'
 import { useProductStore } from './stores/product'
 import { storeToRefs } from 'pinia'
@@ -15,13 +16,34 @@ const menus = [
     { to: '/',          icon: '📦', label: '商品管理' },
     { to: '/dashboard', icon: '📊', label: '数据统计' },
 ]
+
+// ============ 主题切换（新增） ============
+// 暗黑模式开关：状态存 localStorage，刷新页面后保持上次选择
+const isDark = ref(localStorage.getItem('theme') === 'dark')
+
+// 页面一启动就把主题写到 <html> 标签上
+// main.css 里用 [data-theme="dark"] 覆盖 CSS 变量，实现整站换色
+document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light')
+
+function toggleTheme() {
+    isDark.value = !isDark.value
+    document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light')
+    localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
+}
+
+const today = new Date().toLocaleDateString('zh-CN', {
+  year: 'numeric', month: '2-digit', day: '2-digit',
+})
 </script>
 
 <template>
   <div class="app">
     <!-- 左侧栏 -->
     <aside class="sidebar">
-      <div class="logo">🛒 商品管理系统</div>
+      <div class="logo">
+        <span class="logo-icon">🛒</span>
+        <span class="logo-text">商品管理系统</span>
+      </div>
       <nav class="nav-menu">
         <RouterLink
           v-for="(m, i) in menus"
@@ -32,9 +54,16 @@ const menus = [
           exact-active-class="active"
         >
           <span class="nav-icon">{{ m.icon }}</span>
-          <span>{{ m.label }}</span>
+          <!-- nav-label：窄屏下这个文字会被隐藏，只留图标 -->
+          <span class="nav-label">{{ m.label }}</span>
         </RouterLink>
       </nav>
+
+      <!-- 主题开关（新增）：margin-top:auto 把它推到侧边栏最底部 -->
+      <div class="theme-toggle" @click="toggleTheme">
+        <span class="nav-icon">{{ isDark ? '☀️' : '🌙' }}</span>
+        <span class="nav-label">{{ isDark ? '切换亮色' : '切换暗色' }}</span>
+      </div>
     </aside>
 
     <!-- 右侧区域 -->
@@ -44,13 +73,20 @@ const menus = [
           <span class="topbar-title">商品列表</span>
         </div>
         <div class="topbar-right">
-          <span class="date">2026-09-17</span>
-          <div class="avatar">刘</div>
+          <span class="date">{{ today }}</span>
+          <div class="avatar">姜</div>
         </div>
       </header>
 
       <main class="content">
-        <RouterView />
+        <!-- 路由切换过渡（新增）：
+             v-slot 拿到当前路由组件，套 <Transition> 做淡入上移动画，
+             mode="out-in" = 旧页面先退场、新页面再进场，避免两个页面叠在一起 -->
+        <RouterView v-slot="{ Component }">
+          <Transition name="page" mode="out-in">
+            <component :is="Component" />
+          </Transition>
+        </RouterView>
       </main>
     </div>
 
@@ -71,12 +107,13 @@ const menus = [
 /* ============ 侧边栏 ============ */
 .sidebar {
   width: 220px;
-  background: #1e293b;
+  background: var(--bg-sidebar);   /* 原来写死 #1e293b，改用变量以适配暗黑主题 */
   color: #cbd5e1;
   display: flex;
   flex-direction: column;
   padding: 20px 0;
   flex-shrink: 0;
+  transition: width .2s;           /* 窄屏收窄时有个平滑过渡 */
 }
 .sidebar .logo {
   font-size: 18px;
@@ -84,6 +121,8 @@ const menus = [
   color: #fff;
   padding: 0 20px;
   margin-bottom: 30px;
+  white-space: nowrap;             /* 收窄时不许文字换行，配合 overflow 裁切 */
+  overflow: hidden;
 }
 .nav-item {
   padding: 12px 20px;
@@ -95,6 +134,8 @@ const menus = [
   text-decoration: none;
   color: inherit;
   transition: background .15s;
+  white-space: nowrap;
+  overflow: hidden;
 }
 .nav-item:hover { background: rgba(255, 255, 255, .05); }
 .nav-item.active {
@@ -102,6 +143,22 @@ const menus = [
   color: #fff;
 }
 .nav-icon { font-size: 16px; }
+
+/* 主题开关（新增）：外观对齐 nav-item，但只是个 div 不是链接 */
+.theme-toggle {
+  margin-top: auto;                /* 关键：flex 布局里把它推到最底部 */
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background .15s;
+}
+.theme-toggle:hover { background: rgba(255, 255, 255, .05); }
 
 /* ============ 右侧区域 ============ */
 .right-area {
@@ -114,7 +171,7 @@ const menus = [
 /* ============ 顶栏 ============ */
 .topbar {
   height: 60px;
-  background: #fff;
+  background: var(--bg-card);      /* 原来写死 #fff，改用变量以适配暗黑主题 */
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -156,9 +213,38 @@ const menus = [
   overflow-y: auto;
 }
 
+/* ============ 路由切换过渡（新增） ============ */
+/* 新页面淡入 + 轻微上移；旧页面淡出 + 轻微上移离场 */
+.page-enter-active,
+.page-leave-active { transition: opacity .18s ease, transform .18s ease; }
+.page-enter-from { opacity: 0; transform: translateY(8px); }
+.page-leave-to   { opacity: 0; transform: translateY(-8px); }
+
 /* ============ Toast 过渡 ============ */
 .fade-enter-active,
 .fade-leave-active { transition: opacity .2s; }
 .fade-enter-from,
 .fade-leave-to { opacity: 0; }
+
+/* ============ 响应式（新增）：窄屏下侧边栏收成图标栏 ============ */
+/* 768px 是常见的"手机/平板分界线"，比它窄就只留图标 */
+@media (max-width: 768px) {
+  .sidebar { width: 64px; }
+  .sidebar .logo {
+    padding: 0;                    /* 去掉左右 padding，让图标居中 */
+    text-align: center;
+  }
+  .logo-text { display: none; }    /* 隐藏文字只留 🛒 */
+  .nav-item {
+    justify-content: center;       /* 图标居中 */
+    padding: 14px 0;               /* 上下加大 padding 方便手指点 */
+  }
+  .nav-label { display: none; }    /* 隐藏菜单文字 */
+  .theme-toggle {
+    justify-content: center;
+    padding: 14px 0;
+  }
+  .topbar { padding: 0 12px; }
+  .content { padding: 12px; }
+}
 </style>

@@ -286,6 +286,18 @@ export const useProductStore = defineStore('product', () => {
         showToast('删除成功')
     }
 
+    // ========== 格式化工具 ==========
+    // 价格格式化：加货币符号 + 千分位 + 固定两位小数
+    // 例：199 → '¥199.00'，1999 → '¥1,999.00'
+    function formatPrice(price) {
+        const n = Number(price)
+        if (Number.isNaN(n)) return '¥0.00'   // 容错：非数字一律兜底为 0
+        return '¥' + n.toLocaleString('zh-CN', {
+            minimumFractionDigits: 2,         // 不足两位补 0（199 → 199.00）
+            maximumFractionDigits: 2,         // 超两位截断（199.999 → 200.00）
+        })
+    }
+
     // ========== Toast 提示 ==========
     // 显示提示消息，并在指定时间后自动隐藏。
     function showToast(msg, duration = 2000) {
@@ -319,6 +331,6 @@ export const useProductStore = defineStore('product', () => {
         addProduct, updateProduct, deleteSingle, deleteBatch,
         openAddModal, openEditModal, closeProductModal,
         openDeleteSingle, openDeleteBatch, closeDeleteModal, confirmDelete,
-        showToast,
+        showToast, formatPrice,
     }
 })

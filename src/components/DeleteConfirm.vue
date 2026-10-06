@@ -22,20 +22,23 @@ const message = computed(() => {
 </script>
 
 <template>
-  <div
-    v-if="showDeleteModal"
-    class="overlay"
-    @click.self="store.closeDeleteModal()"
-  >
-    <div class="modal">
-      <h3>确认删除？</h3>
-      <p>{{ message }}</p>
-      <div class="buttons">
-        <button class="btn-danger" @click="store.confirmDelete()">确认</button>
-        <button class="btn-default" @click="store.closeDeleteModal()">取消</button>
+  <!-- 弹窗过渡（新增）：Transition 包住 overlay，遮罩淡入 + 弹窗缩放 -->
+  <Transition name="modal">
+    <div
+      v-if="showDeleteModal"
+      class="overlay"
+      @click.self="store.closeDeleteModal()"
+    >
+      <div class="modal">
+        <h3>确认删除？</h3>
+        <p>{{ message }}</p>
+        <div class="buttons">
+          <button class="btn-danger" @click="store.confirmDelete()">确认</button>
+          <button class="btn-default" @click="store.closeDeleteModal()">取消</button>
+        </div>
       </div>
     </div>
-  </div>
+  </Transition>
 </template>
 
 <style scoped>
@@ -75,4 +78,14 @@ const message = computed(() => {
   justify-content: flex-end;
   gap: 10px;
 }
+
+/* ===== 弹窗过渡（新增）：遮罩淡入 + 弹窗从 92% 缩放弹起 ===== */
+.modal-enter-active,
+.modal-leave-active { transition: opacity .22s ease; }
+.modal-enter-active .modal,
+.modal-leave-active .modal { transition: transform .22s ease; }
+.modal-enter-from,
+.modal-leave-to { opacity: 0; }
+.modal-enter-from .modal,
+.modal-leave-to .modal { transform: scale(.92); }
 </style>

@@ -12,6 +12,16 @@ const {
     pagedProducts, totalPages, currentPage,
     selectedIds, checkAllState, pageIds,
 } = storeToRefs(store)
+
+// 库存状态色（新增）：三档分级，返回对应的 css 类名
+//   < 10  → 红色（快要卖完了，紧急）
+//   < 50  → 橙色（偏低，提醒补货）
+//   >= 50 → 正常颜色（不加类名）
+function stockClass(stock) {
+    if (stock < 10) return 'stock-danger'
+    if (stock < 50) return 'stock-warning'
+    return ''
+}
 </script>
 
 <template>
@@ -30,16 +40,19 @@ const {
           </th>
           <th>商品名称</th>
           <th>分类</th>
-          <th>价格（元）</th>
+          <th>价格</th>
           <th>库存（件）</th>
           <th>状态</th>
           <th>操作</th>
         </tr>
       </thead>
       <tbody>
-        <!-- 空数据状态 -->
+        <!-- 空数据状态（新增）：图标 + 引导文案，代替干巴巴的"暂无数据" -->
         <tr v-if="pagedProducts.length === 0">
-          <td colspan="7" class="empty">暂无数据</td>
+          <td colspan="7" class="empty">
+            <div class="empty-icon">📭</div>
+            <div class="empty-text">没有找到商品，试试调整筛选</div>
+          </td>
         </tr>
 
         <!-- v-for 渲染每一行（Vue 自动转义插值，天然防 XSS） -->
@@ -56,8 +69,12 @@ const {
           </td>
           <td>{{ product.name }}</td>
           <td>{{ product.category }}</td>
-          <td class="num">{{ product.price }}</td>
-          <td class="num">{{ product.stock }}</td>
+          <!-- 价格格式化（新增）：store.formatPrice 输出 ¥1,299.00 样式 -->
+          <td class="num">{{ store.formatPrice(product.price) }}</td>
+          <!-- 库存三档色（新增）：红 / 橙 / 正常 -->
+          <td class="num">
+            <span :class="stockClass(product.stock)">{{ product.stock }}</span>
+          </td>
           <td>
             <span :class="product.status === '上架中' ? 'tag-online' : 'tag-offline'">
               {{ product.status }}
@@ -89,20 +106,29 @@ const {
 </template>
 
 <style scoped>
+/* ===== 卡片包裹（新增）：表格整体包进白底圆角卡片，不再直接贴在灰背景上 ===== */
+.table-wrap {
+  background: var(--bg-card);
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .06);
+  overflow: hidden;       /* 关键：裁掉表格的直角，圆角才能生效 */
+  padding-bottom: 16px;   /* 给底部分页条留出呼吸空间 */
+}
+
 .product-table {
   width: 100%;
-  background: #fff;
+  background: var(--bg-card);   /* 原来写死 #fff，改用变量以适配暗黑主题 */
   border-collapse: collapse;
 }
 .product-table th,
 .product-table td {
   padding: 12px;
   text-align: left;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border);   /* 原来写死 #e5e7eb */
 }
 .product-table th {
-  background: #f8fafc;
-  color: #475569;
+  background: var(--gray-50);    /* 原来写死 #f8fafc */
+  color: var(--text-sub);        /* 原来写死 #475569 */
   font-size: 13px;
 }
 .tag-online,
@@ -120,8 +146,15 @@ const {
   color: #dc2626;
   background: #fee2e2;
 }
-.stock-low {
-  color: red;
+
+/* ===== 库存三档色（新增）：替代原来单一的红色列 ===== */
+.stock-danger {
+  color: var(--danger);
+  font-weight: bold;
+}
+.stock-warning {
+  color: var(--warning);
+  font-weight: bold;
 }
 
 /* ===== 表格行：悬停 + 斑马纹 ===== */
@@ -129,18 +162,18 @@ const {
   transition: background .15s;
 }
 .product-table tbody tr:hover {
-  background: #f8fafc;
+  background: var(--gray-50);
 }
 .product-table tbody tr:nth-child(even) {
-  background: #fafbfc;
+  background: var(--row-even);   /* 原来写死 #fafbfc，斑马纹改成变量 */
 }
 .product-table tbody tr:nth-child(even):hover {
-  background: #f8fafc;
+  background: var(--gray-50);
 }
 
 /* ===== 操作列链接 ===== */
 .product-table td a {
-  color: #3b82f6;
+  color: var(--primary);          /* 原来写死 #3b82f6 */
   text-decoration: none;
   font-size: 13px;
   margin-right: 10px;
@@ -150,7 +183,7 @@ const {
   text-decoration: underline;
 }
 .product-table td a:last-child {
-  color: #dc2626;
+  color: var(--danger);           /* 原来写死 #dc2626 */
   margin-right: 0;
 }
 
@@ -161,39 +194,47 @@ const {
   align-items: center;
   gap: 12px;
   margin-top: 16px;
+  padding: 0 12px;
 }
 
 .page-bar button {
   height: 32px;
   padding: 0 14px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #fff;
-  color: #1e293b;
+  background: var(--bg-card);
+  color: var(--text-main);
   font-size: 14px;
   cursor: pointer;
   transition: background .2s;
 }
 
 .page-bar button:hover:not(:disabled) {
-  background: #f8fafc;
+  background: var(--gray-50);
 }
 
 .page-bar button:disabled {
   color: #9ca3af;
-  background: #f3f4f6;
+  background: var(--gray-50);     /* 原来写死 #f3f4f6，改用变量以适配暗黑主题 */
   cursor: not-allowed;
 }
 
 .page-bar span {
   font-size: 14px;
-  color: #1e293b;
+  color: var(--text-main);
 }
 
-/* ===== 空数据提示（备用）===== */
+/* ===== 空数据提示（新增）===== */
 .empty {
   text-align: center;
-  color: #94a3b8;
-  padding: 40px !important;
+  color: var(--text-sub);
+  padding: 48px 20px !important;
+}
+.empty-icon {
+  font-size: 40px;       /* 大图标 */
+  margin-bottom: 10px;
+}
+.empty-text {
+  font-size: 14px;
 }
 </style>
