@@ -75,11 +75,13 @@ function save() {
 </script>
 
 <template>
-  <div
-    v-if="showProductModal"
-    class="overlay"
-    @click.self="store.closeProductModal()"
-  >
+  <!-- 弹窗过渡（新增）：Transition 包住 overlay，遮罩淡入 + 弹窗缩放 -->
+  <Transition name="modal">
+    <div
+      v-if="showProductModal"
+      class="overlay"
+      @click.self="store.closeProductModal()"
+    >
     <div class="modal">
       <h3>{{ editingId === null ? '新增商品' : '编辑商品' }}</h3>
 
@@ -121,7 +123,8 @@ function save() {
         <button class="btn-default" @click="store.closeProductModal()">取消</button>
       </div>
     </div>
-  </div>
+    </div>
+  </Transition>
 </template>
 
 <style scoped>
@@ -164,9 +167,9 @@ function save() {
   width: 100%;
   height: 38px;
   padding: 0 10px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);      /* 原来写死 #d1d5db，改用变量以适配暗黑主题 */
   border-radius: 6px;
-  background: #fff;
+  background: var(--bg-card);           /* 原来写死 #fff，改用变量以适配暗黑主题 */
   color: var(--text-main);
   font: inherit;
   outline: none;
@@ -183,4 +186,15 @@ function save() {
   gap: 10px;
   margin-top: 20px;
 }
+
+/* ===== 弹窗过渡（新增）：遮罩淡入 + 弹窗从 92% 缩放弹起 ===== */
+/* 外层 .overlay 管透明度，内层 .modal 管 transform，两个一起动 */
+.modal-enter-active,
+.modal-leave-active { transition: opacity .22s ease; }
+.modal-enter-active .modal,
+.modal-leave-active .modal { transition: transform .22s ease; }
+.modal-enter-from,
+.modal-leave-to { opacity: 0; }
+.modal-enter-from .modal,
+.modal-leave-to .modal { transform: scale(.92); }
 </style>
